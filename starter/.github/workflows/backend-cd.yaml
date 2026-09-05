@@ -48,7 +48,8 @@ jobs:
     needs: [lint, test]
     runs-on: ubuntu-latest
     outputs:
-      image_tag: ${{ steps:vars.outputs.sha_short }}
+      image_tag: ${{ steps.vars.outputs.sha_short }}
+      ecr_registry: ${{ steps.login-ecr.outputs.registry }}
     steps:
       - uses: actions/checkout@v3
 
@@ -96,10 +97,10 @@ jobs:
 
       - name: Deploy with Kustomize
         env:
-          ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+          ECR_REGISTRY: ${{ needs.build-and-push.outputs.ecr_registry }}
           ECR_REPOSITORY: ${{ secrets.BACKEND_ECR_REPOSITORY }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
         run: |
           cd starter/backend/k8s
           kustomize edit set image backend=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          kustomize build | kubectl apply -f -
+          kustomize build . | kubectl apply -f -
